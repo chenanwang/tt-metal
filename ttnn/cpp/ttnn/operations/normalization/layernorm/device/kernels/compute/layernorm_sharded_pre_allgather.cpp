@@ -120,6 +120,13 @@ void kernel_main() {
     binary_op_init_common(cb_in, cb_in, cb_x2);
 #endif
 
+#ifdef DO_COL_MASK
+    // The column mask (cb_col_mask_packed) is generated on-device by the writer (block_w tiles, one per
+    // width-tile position). Wait once for it here; the masking sites below read it by tile index and
+    // never pop it.
+    cb_wait_front(cb_col_mask_packed, block_w);
+#endif
+
 #ifndef RMSNORM
     cb_scaler_obj.wait_front(1);
 #ifdef FUSE_PRE_ADD
