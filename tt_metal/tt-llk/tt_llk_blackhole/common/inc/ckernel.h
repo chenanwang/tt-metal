@@ -69,7 +69,7 @@ extern volatile std::uint32_t __instrn_buffer[];
 namespace ckernel
 {
 constexpr inline volatile std::uint32_t(tt_reg_ptr &instrn_buffer)[] = __instrn_buffer;
-extern volatile std::uint32_t tt_reg_ptr *mailbox_base[4];
+extern volatile std::uint32_t tt_reg_ptr *const mailbox_base[4];
 
 extern std::uint32_t cfg_state_id;
 extern std::uint32_t dest_offset_id;
