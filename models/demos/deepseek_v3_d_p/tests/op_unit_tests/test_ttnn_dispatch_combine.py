@@ -18,6 +18,7 @@ from tracy import signpost
 import ttnn
 from models.demos.deepseek_v3_d_p.reference.deepseek_v3_config import DeepSeekV3Config
 from models.demos.deepseek_v3_d_p.reference.glm_5_1_config import GLM51Config
+from models.demos.deepseek_v3_d_p.reference.kimi_k2_6_config import KimiK26Config
 from models.demos.deepseek_v3_d_p.reference.minimax_m2_7_config import MiniMaxM27Config
 from models.demos.deepseek_v3_d_p.reference.tt.moe.combine import TorchCombineModule
 from models.demos.deepseek_v3_d_p.reference.tt.moe.dispatch import TorchDispatchModule
@@ -420,6 +421,49 @@ def test_ttnn_dispatch_combine_ds(
     ids=["dispatched_buffer_tile"],
 )
 def test_ttnn_dispatch_combine_glm(
+    mesh_device,
+    seq_len_per_chip,
+    emb_dim,
+    num_routed_experts,
+    num_experts_per_tok,
+    dispatch_buffer_capacity_factor,
+    num_links,
+    topology,
+    use_predictable_data,
+    dispatched_buffer_layout,
+):
+    run_dispatch_combine(
+        mesh_device,
+        seq_len_per_chip,
+        emb_dim,
+        num_routed_experts,
+        num_experts_per_tok,
+        dispatch_buffer_capacity_factor,
+        num_links,
+        topology,
+        use_predictable_data,
+        dispatched_buffer_layout,
+    )
+
+
+# Kimi K2.6 round-trip shape (emb 7168).
+@pytest.mark.parametrize(
+    "seq_len_per_chip, emb_dim, num_routed_experts, num_experts_per_tok, dispatch_buffer_capacity_factor",
+    [(3200, KimiK26Config.EMB_SIZE, KimiK26Config.NUM_ROUTED_EXPERTS // 4, 2, 2)],
+    ids=["3200-avg"],
+)
+@pytest.mark.parametrize(
+    "mesh_device, device_params, num_links, topology",
+    ALL_MESH_CONFIGS,
+    indirect=["mesh_device", "device_params"],
+)
+@pytest.mark.parametrize("use_predictable_data", [True, False], ids=["predictable", "random"])
+@pytest.mark.parametrize(
+    "dispatched_buffer_layout",
+    [ttnn.TILE_LAYOUT],
+    ids=["dispatched_buffer_tile"],
+)
+def test_ttnn_dispatch_combine_kimi(
     mesh_device,
     seq_len_per_chip,
     emb_dim,

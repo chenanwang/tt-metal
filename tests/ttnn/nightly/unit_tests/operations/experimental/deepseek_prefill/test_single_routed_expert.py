@@ -17,6 +17,7 @@ import ttnn
 from models.common.utility_functions import is_blackhole
 from models.demos.deepseek_v3_d_p.reference.deepseek_v3_config import DeepSeekV3Config
 from models.demos.deepseek_v3_d_p.reference.glm_5_1_config import GLM51Config
+from models.demos.deepseek_v3_d_p.reference.kimi_k2_6_config import KimiK26Config
 from models.demos.deepseek_v3_d_p.reference.minimax_m2_7_config import MiniMaxM27Config
 from models.demos.deepseek_v3_d_p.reference.tt.moe.expert import TorchExpert
 from models.demos.deepseek_v3_d_p.tt.moe.tt_routed_expert import TtRoutedExpert
@@ -190,6 +191,19 @@ def test_single_routed_expert_glm(mesh_device, device_params, num_tokens: int, e
     run_single_routed_expert(mesh_device, device_params, num_tokens, emb_dim, hidden_dim)
 
 
+# Kimi K2.6 dims (emb 7168, hidden = MOE_INTERMEDIATE_SIZE 2048) across the token sweep.
+@pytest.mark.parametrize(
+    "num_tokens, emb_dim, hidden_dim",
+    [(n, KimiK26Config.EMB_SIZE, KimiK26Config.MOE_INTERMEDIATE_SIZE) for n, _ in _TOKEN_SWEEP],
+    ids=[f"kimi-{tag}" for _, tag in _TOKEN_SWEEP],
+)
+@pytest.mark.parametrize(
+    "mesh_device, device_params", SINGLE_CHIP_MESH_PARAMS, indirect=["mesh_device", "device_params"]
+)
+def test_single_routed_expert_kimi(mesh_device, device_params, num_tokens: int, emb_dim: int, hidden_dim: int):
+    run_single_routed_expert(mesh_device, device_params, num_tokens, emb_dim, hidden_dim)
+
+
 # (allocated_tokens, active_tokens, id) sweep for the count-aware sparsity test, applied per
 # model with that model's (emb_dim, hidden_dim). The alloc/active pairs are model-independent.
 _FAKED_SWEEP = [
@@ -346,6 +360,24 @@ def test_single_routed_expert_faked_token_count_minimax(
 )
 @pytest.mark.skipif(not is_blackhole(), reason="device-side count-aware sparsity is Blackhole-only")
 def test_single_routed_expert_faked_token_count_glm(
+    mesh_device, device_params, allocated_tokens: int, active_tokens: int, emb_dim: int, hidden_dim: int
+):
+    run_single_routed_expert_faked_token_count(
+        mesh_device, device_params, allocated_tokens, active_tokens, emb_dim, hidden_dim
+    )
+
+
+# Kimi K2.6 dims (emb 7168, hidden = MOE_INTERMEDIATE_SIZE 2048) across the alloc/active sweep.
+@pytest.mark.parametrize(
+    "allocated_tokens, active_tokens, emb_dim, hidden_dim",
+    [(alloc, active, KimiK26Config.EMB_SIZE, KimiK26Config.MOE_INTERMEDIATE_SIZE) for alloc, active, _ in _FAKED_SWEEP],
+    ids=[f"kimi-{tag}" for _, _, tag in _FAKED_SWEEP],
+)
+@pytest.mark.parametrize(
+    "mesh_device, device_params", SINGLE_CHIP_MESH_PARAMS, indirect=["mesh_device", "device_params"]
+)
+@pytest.mark.skipif(not is_blackhole(), reason="device-side count-aware sparsity is Blackhole-only")
+def test_single_routed_expert_faked_token_count_kimi(
     mesh_device, device_params, allocated_tokens: int, active_tokens: int, emb_dim: int, hidden_dim: int
 ):
     run_single_routed_expert_faked_token_count(

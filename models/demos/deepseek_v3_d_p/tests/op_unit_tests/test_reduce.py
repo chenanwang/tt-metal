@@ -19,6 +19,7 @@ from tracy import signpost
 import ttnn
 from models.demos.deepseek_v3_d_p.reference.deepseek_v3_config import DeepSeekV3Config
 from models.demos.deepseek_v3_d_p.reference.glm_5_1_config import GLM51Config
+from models.demos.deepseek_v3_d_p.reference.kimi_k2_6_config import KimiK26Config
 from models.demos.deepseek_v3_d_p.reference.minimax_m2_7_config import MiniMaxM27Config
 from models.demos.deepseek_v3_d_p.reference.tt.moe.reduce import TorchReduceModule
 from models.demos.deepseek_v3_d_p.tt.moe.init_helpers import (
@@ -230,6 +231,18 @@ def test_ttnn_reduce_ds(mesh_device, seq_len, emb_dim, topk, use_weights):
 )
 @pytest.mark.parametrize("mesh_device, device_params", REDUCE_MESH_PARAMS, indirect=["mesh_device", "device_params"])
 def test_ttnn_reduce_glm(mesh_device, seq_len, emb_dim, topk, use_weights):
+    run_reduce(mesh_device, seq_len, emb_dim, topk, use_weights)
+
+
+# Kimi K2.6 reduce shape (emb 7168, topk = num_experts_per_tok).
+@pytest.mark.parametrize("use_weights", [True, False], ids=["weighted", "unweighted"])
+@pytest.mark.parametrize(
+    "seq_len, emb_dim, topk",
+    [(3200, KimiK26Config.EMB_SIZE, KimiK26Config.NUM_EXPERTS_PER_TOKEN)],
+    ids=["kimi"],
+)
+@pytest.mark.parametrize("mesh_device, device_params", REDUCE_MESH_PARAMS, indirect=["mesh_device", "device_params"])
+def test_ttnn_reduce_kimi(mesh_device, seq_len, emb_dim, topk, use_weights):
     run_reduce(mesh_device, seq_len, emb_dim, topk, use_weights)
 
 

@@ -16,6 +16,7 @@ import ttnn
 
 from models.demos.deepseek_v3_d_p.reference.deepseek_v3_config import DeepSeekV3Config
 from models.demos.deepseek_v3_d_p.reference.glm_5_1_config import GLM51Config
+from models.demos.deepseek_v3_d_p.reference.kimi_k2_6_config import KimiK26Config
 from models.demos.deepseek_v3_d_p.reference.minimax_m2_7_config import MiniMaxM27Config
 from tests.ttnn.utils_for_testing import assert_with_pcc
 
@@ -502,12 +503,14 @@ STRESS_GLOBAL_ROWS = 2 * 25 * K  # 51200
 STRESS_LOCAL_ROWS = 25 * K  # 25600
 
 # hidden_dim (the global/local tensors' column count) is the only model-dependent stress shape:
-# DeepSeek V3 = 7168, GLM 5.1 = 6144, MiniMax M2.7 = 3072. global_rows and local_rows are
-# token-dimension and model-independent.
+# DeepSeek V3 = 7168, GLM 5.1 = 6144, MiniMax M2.7 = 3072, Kimi K2.6 = 7168. global_rows and
+# local_rows are token-dimension and model-independent. Kimi shares DeepSeek V3's 7168 width, so
+# its entry exercises the same shape under an explicit kimi id.
 STRESS_HIDDEN_DIM_PARAMS = [
     pytest.param(DeepSeekV3Config.EMB_SIZE, id="ds"),
     pytest.param(GLM51Config.EMB_SIZE, id="glm"),
     pytest.param(MiniMaxM27Config.EMB_SIZE, id="minimax"),
+    pytest.param(KimiK26Config.EMB_SIZE, id="kimi"),
 ]
 
 
