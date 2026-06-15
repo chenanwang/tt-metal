@@ -166,7 +166,7 @@ sfpi_inline sfpi::vFloat _sfpu_binary_remainder_(sfpi::vFloat in0, sfpi::vFloat 
     // XOR of the float bit-patterns detects sign mismatch via the MSB,
     // avoiding a compound conditional with four comparisons and an OR.
     v_if(result != sfpi::vFloat(0.0f)) {
-        sfpi::vInt signs = sfpi::reinterpret<sfpi::vInt>(result) ^ sfpi::reinterpret<sfpi::vInt>(b);
+        sfpi::vInt signs = sfpi::as<sfpi::vInt>(result) ^ sfpi::as<sfpi::vInt>(b);
         v_and(signs < 0);
         result += b;
     }
