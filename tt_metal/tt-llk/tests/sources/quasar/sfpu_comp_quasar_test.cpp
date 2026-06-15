@@ -79,6 +79,11 @@ void run_kernel(RUNTIME_PARAMETERS params)
     DataFormat src_format = static_cast<DataFormat>(formats.math);
     _llk_math_srcAB_hw_configure_<IMPLIED_MATH_FORMAT, is_fp32_dest_acc_en, is_int_fpu_en>(src_format, src_format);
 
+    // The SFPU load/store format may differ from the math format. For UInt16 the data path
+    // (unpack/math/pack) stays Int16 — the known-good 16-bit container — while sfpu_math selects
+    // the SFPU's UINT16 sfpmem mode (UInt16 has no native Quasar register/dest format).
+    DataFormat sfpu_format = static_cast<DataFormat>(formats.sfpu_math);
+
     _llk_math_eltwise_sfpu_init_();
     _init_zero_comp_();
 
@@ -90,13 +95,16 @@ void run_kernel(RUNTIME_PARAMETERS params)
     for (std::uint32_t i = 0; i < params.TILE_CNT; ++i)
     {
         const int dst_index = static_cast<int>(params.DST_INDEX + i);
-        switch (src_format)
+        switch (sfpu_format)
         {
             case DataFormat::Int32:
                 _llk_math_eltwise_unary_sfpu_params_(_calculate_zero_comp_<false, DataFormat::Int32, SFPU_UNARY_OPERATION, SFPU_ITERATIONS>, dst_index);
                 break;
             case DataFormat::Int16:
                 _llk_math_eltwise_unary_sfpu_params_(_calculate_zero_comp_<false, DataFormat::Int16, SFPU_UNARY_OPERATION, SFPU_ITERATIONS>, dst_index);
+                break;
+            case DataFormat::UInt16:
+                _llk_math_eltwise_unary_sfpu_params_(_calculate_zero_comp_<false, DataFormat::UInt16, SFPU_UNARY_OPERATION, SFPU_ITERATIONS>, dst_index);
                 break;
             default:
                 // Float16 / Float16_b / Float32 — width-agnostic float path.

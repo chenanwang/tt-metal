@@ -30,29 +30,31 @@ constexpr std::uint32_t SFPSETCC_IMM_FP32 = 0x800;
 /**
  * @brief Whether FMT is read/written as an integer (vs float) — drives the 1/0 result encoding.
  *
- * @tparam FMT: Math-side DataFormat (Int32 / Int16, both signed).
+ * @tparam FMT: Math-side DataFormat (Int32 / Int16 signed, UInt16 unsigned).
  */
 template <DataFormat FMT>
 inline constexpr bool _zero_comp_is_int_() {
-    return FMT == DataFormat::Int32 || FMT == DataFormat::Int16;
+    return FMT == DataFormat::Int32 || FMT == DataFormat::Int16 || FMT == DataFormat::UInt16;
 }
 
 /**
  * @brief SFPLOAD/SFPSTORE sfpmem mode for FMT.
  *
  * Integer formats select their explicit mode so the load/store reads/writes the right width:
- * Int32 → INT32 (sign-magnitude), Int16 → INT16 (sign-magnitude SMAG16). Float formats use
- * DEFAULT, letting the HW resolve fp16/bf16/fp32 from the format config.
+ * Int32 → INT32 (sign-magnitude), Int16 → INT16 (sign-magnitude SMAG16), UInt16 → UINT16
+ * (zero-extend on load, truncate on store). Float formats use DEFAULT, letting the HW resolve
+ * fp16/bf16/fp32 from the format config.
  *
- * @note UInt16 is intentionally NOT supported. The SFPU comp kernel is format-agnostic at the
- *       store/load level (changing the sfpmem mode has no effect on the result), but the current
- *       Quasar emulator's UInt16 register-file-format datapath (unpack-to-dest / pack-from-dest)
- *       is broken: a UInt16 tile comes back corrupted (0/1 results read as 0x400 = 1<<10) even
- *       though the bit-identical Int16/SMAG16 path passes. This is an emulator deviation outside
- *       the SFPU kernel's control (file against the SFPU/emulator owner; pre-silicon). Int16
- *       covers the signed 16-bit case; revisit UInt16 once the emulator format path is fixed.
+ * @note UInt16 has no native Quasar register-file/dest format (the emulator's UInt16 dest
+ *       datapath round-trips corrupted, 0/1 read back as 0x400 = 1<<10). It is therefore driven
+ *       through the Int16/SMAG16 container: unpack and pack run in Int16 (bit passthrough, the
+ *       known-good 16-bit path) while only the SFPU loads/stores in UINT16 mode. A standalone
+ *       SFPLOAD/SFPSTORE UINT16 identity experiment (test_sfpu_load_store_uint16_quasar) confirms
+ *       the SFPU's uint16 load/store round-trips correctly, so the corruption lives purely in the
+ *       unpack/pack/dest format path, which this routing sidesteps. The caller must keep the
+ *       unpack/pack/math formats at Int16 and select FMT=UInt16 only to pick this sfpmem mode.
  *
- * @tparam FMT: Math-side DataFormat.
+ * @tparam FMT: SFPU DataFormat.
  */
 template <DataFormat FMT>
 inline constexpr std::uint32_t _zero_comp_sfpmem_mode_() {
@@ -60,6 +62,8 @@ inline constexpr std::uint32_t _zero_comp_sfpmem_mode_() {
         return p_sfpu::sfpmem::INT32;
     } else if constexpr (FMT == DataFormat::Int16) {
         return p_sfpu::sfpmem::INT16;
+    } else if constexpr (FMT == DataFormat::UInt16) {
+        return p_sfpu::sfpmem::UINT16;
     } else {
         return p_sfpu::sfpmem::DEFAULT;
     }
@@ -211,7 +215,7 @@ struct zero_comp_fill<FMT, SfpuType::less_than_equal_zero> {
  * each replay advances the dest counter by one SFP-row pair while the load/store offsets stay
  * constant, letting the recorded instructions re-issue unchanged across iterations.
  *
- * @tparam FMT: Math-side DataFormat (Int32 or a float format).
+ * @tparam FMT: Math-side DataFormat (Int32, Int16, UInt16, or a float format).
  * @tparam COMP_MODE: Comparison-to-zero mode, values =
  *         <equal_zero/not_equal_zero/less_than_zero/greater_than_zero/greater_than_equal_zero/less_than_equal_zero>
  */
@@ -237,7 +241,7 @@ inline __attribute__((always_inline)) void _zero_comp_body_() {
  * advances the dest counter per replay, so the loop processes one SFP-row pair per iteration.
  *
  * @tparam APPROXIMATION_MODE: Unused (no approx path); retained for dispatcher signature symmetry.
- * @tparam FMT: Math-side DataFormat (Int32 or a float format).
+ * @tparam FMT: Math-side DataFormat (Int32, Int16, UInt16, or a float format).
  * @tparam COMP_MODE: Comparison-to-zero mode, values =
  *         <equal_zero/not_equal_zero/less_than_zero/greater_than_zero/greater_than_equal_zero/less_than_equal_zero>
  * @tparam ITERATIONS: Number of SFP-row pairs to process (8 for a 32×16 face).

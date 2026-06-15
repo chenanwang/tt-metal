@@ -249,3 +249,117 @@ def test_sfpu_comp_quasar(op_formats_dest_acc_implied_math_input_dims):
     assert passed_test(
         golden_tensor, res_tensor, formats.output_format
     ), "Assert against golden failed"
+
+
+# UInt16 has no native Quasar dest format. The inference model (data_format_inference) detects a
+# UInt16 request on Quasar and routes the whole data path through Int16 (bit passthrough, the
+# known-good 16-bit container), setting FormatConfig.sfpu_math=UInt16 — that is the only stage
+# read as uint16, and the comp kernel uses it to pick sfpmem::UINT16. So the test just asks for
+# UInt16 and the plumbing handles the Int16 routing.
+SFPU_COMP_UINT16_FORMATS = input_output_formats(
+    [DataFormat.UInt16],
+    same=True,
+)
+
+
+def prepare_comp_inputs_uint16(
+    src_A: torch.Tensor, src_B: torch.Tensor, input_format: DataFormat
+) -> torch.Tensor:
+    """
+    Non-negative 16-bit stimuli for the UInt16 comp path.
+
+    Values are clamped to [0, 32767] so the bit pattern is identical whether the dest is read as
+    Int16/SMAG16 (the unpack/pack container) or UINT16 (the SFPU). Seeds exact zero and a couple
+    of extremes so every comparison mode is exercised; the signed and unsigned goldens coincide
+    on this range.
+    """
+    values = (src_A.to(torch.int64).abs() % 32768) | (
+        src_B.to(torch.int64).abs() % 256
+    )  # mix in low bits from B for variety, stays non-negative
+
+    flat = values.flatten()
+    for i, seed in enumerate([0, 1, 2, 32767, 100, 0]):
+        if i < flat.numel():
+            flat[i] = seed
+    return flat.reshape(values.shape).to(format_dict[input_format])
+
+
+@pytest.mark.quasar
+@parametrize(
+    op_format_input_dims=[
+        (op, fmt, dims)
+        for op in COMP_OPS
+        for fmt in SFPU_COMP_UINT16_FORMATS
+        for dims in ([32, 32], [64, 64])
+    ],
+)
+def test_sfpu_comp_uint16_quasar(op_format_input_dims):
+    """
+    Comparison-to-zero on UInt16, routed through the Int16 container by the format inference.
+
+    Exercises the comp kernel's sfpmem::UINT16 load/store branch (FormatConfig.sfpu_math=UInt16)
+    while the data path stays Int16, the only 16-bit path the Quasar emulator round-trips cleanly.
+    Golden is the shared element-wise comparison applied to the (non-negative) integer stimuli.
+    """
+    (op, formats, input_dimensions) = op_format_input_dims[0]
+
+    torch.manual_seed(42)
+
+    src_A, tile_cnt_A, src_B, _ = generate_stimuli(
+        stimuli_format_A=formats.input_format,
+        input_dimensions_A=input_dimensions,
+        stimuli_format_B=formats.input_format,
+        input_dimensions_B=input_dimensions,
+    )
+
+    src_A = prepare_comp_inputs_uint16(src_A, src_B, formats.input_format)
+
+    num_faces = 4
+
+    # Integer comparison-to-zero golden: reuse UnarySFPUGolden's element-wise comparison methods.
+    comp_ops = UnarySFPUGolden().ops
+    op_res = [comp_ops[op](x) for x in src_A.flatten().tolist()]
+    golden_tensor = torch.tensor(op_res, dtype=format_dict[formats.output_format])
+
+    configuration = TestConfig(
+        "sources/quasar/sfpu_comp_quasar_test.cpp",
+        formats,
+        templates=[
+            MATH_OP(mathop=op),
+            IMPLIED_MATH_FORMAT(ImpliedMathFormat.No),
+            DATA_COPY_TYPE(DataCopyType.A2D),
+            UNPACKER_ENGINE_SEL(UnpackerEngine.UnpDest),
+            DEST_SYNC(),
+        ],
+        runtimes=[
+            TILE_COUNT(tile_cnt_A),
+            NUM_FACES(num_faces),
+            TEST_FACE_DIMS(),
+            DEST_INDEX(0),
+        ],
+        variant_stimuli=StimuliConfig(
+            src_A,
+            formats.input_format,
+            src_B,
+            formats.input_format,
+            formats.output_format,
+            tile_count_A=tile_cnt_A,
+            tile_count_B=tile_cnt_A,
+            tile_count_res=tile_cnt_A,
+            num_faces=num_faces,
+        ),
+        unpack_to_dest=True,
+        dest_acc=DestAccumulation.No,
+    )
+
+    res_from_L1 = configuration.run().result
+
+    assert len(res_from_L1) == len(
+        golden_tensor
+    ), "Result tensor and golden tensor are not of the same length"
+
+    res_tensor = torch.tensor(res_from_L1, dtype=format_dict[formats.output_format])
+
+    assert passed_test(
+        golden_tensor, res_tensor, formats.output_format
+    ), "Assert against golden failed"
