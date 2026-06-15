@@ -48,6 +48,7 @@ class TestVariant:
         mla_ref_cache_env: Optional[str] = None,
         ttnn_cache_env: Optional[str] = None,
         moe_pcc_threshold: float = 0.999,
+        moe_pcc_threshold_fp8: float = 0.972,
         mla_pcc_threshold: float = 0.999,
         supports_pretrained: bool = True,
     ) -> None:
@@ -65,6 +66,7 @@ class TestVariant:
         self.mla_ref_cache_env = mla_ref_cache_env
         self.ttnn_cache_env = ttnn_cache_env
         self.moe_pcc_threshold = moe_pcc_threshold
+        self.moe_pcc_threshold_fp8 = moe_pcc_threshold_fp8
         self.mla_pcc_threshold = mla_pcc_threshold
         self.supports_pretrained = supports_pretrained
 
@@ -85,6 +87,7 @@ DSV3 = TestVariant(
     ttnn_cache_env="TT_DS_PREFILL_TTNN_CACHE",
     mla_pcc_threshold=0.996,
     moe_pcc_threshold=0.985,
+    moe_pcc_threshold_fp8=0.972,
 )
 
 KIMI_V2_6 = TestVariant(
@@ -103,6 +106,7 @@ KIMI_V2_6 = TestVariant(
     ttnn_cache_env="TT_KIMI_PREFILL_TTNN_CACHE",
     mla_pcc_threshold=0.995,
     moe_pcc_threshold=0.987,
+    moe_pcc_threshold_fp8=0.985,
 )
 
 TEST_VARIANTS = {v.name: v for v in [DSV3, KIMI_V2_6]}
