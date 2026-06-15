@@ -11,8 +11,8 @@
 #
 # For max allowed timeout refer to .github/time_budget.yaml.
 
-- name: tt-train run models
-  cmd: python tt-train/scripts/run_models.py
+- name: "NanoGPT Shakespeare"
+  cmd: python tt-train/scripts/run_models.py --model_config tt-train/scripts/run_models_configs/single_cards.yaml --filter-filenames "nanogpt_shakespeare"
   skus:
     wh_n150_civ2:
       timeout: 90
@@ -20,6 +20,86 @@
       timeout: 90
     bh_p100a_civ2_viommu:
       timeout: 90
+    bh_p150b_civ2:
+      timeout: 240
+  owner_id: U07K00A281X # Kevin Wu
+  team: train
+
+- name: "NanoLlama3 Shakespeare"
+  cmd: python tt-train/scripts/run_models.py --model_config tt-train/scripts/run_models_configs/single_cards.yaml --filter-filenames "nanollama_shakespeare"
+  skus:
+    wh_n150_civ2:
+      timeout: 90
+    wh_n300_civ2:
+      timeout: 90
+    bh_p100a_civ2_viommu:
+      timeout: 90
+    bh_p150b_civ2:
+      timeout: 240
+  owner_id: U07K00A281X # Kevin Wu
+  team: train
+
+- name: "Nano Deepseek (Char) Shakespeare"
+  cmd: python tt-train/scripts/run_models.py --model_config tt-train/scripts/run_models_configs/single_cards.yaml --filter-filenames "nano_deepseek_char_shakespeare"
+  skus:
+    wh_n150_civ2:
+      timeout: 90
+    wh_n300_civ2:
+      timeout: 90
+    bh_p100a_civ2_viommu:
+      timeout: 90
+    bh_p150b_civ2:
+      timeout: 240
+  owner_id: U07K00A281X # Kevin Wu
+  team: train
+
+- name: "Linear Regression"
+  cmd: python tt-train/scripts/run_models.py --model_config tt-train/scripts/run_models_configs/single_cards.yaml --filter-filenames "linear_regression"
+  skus:
+    wh_n150_civ2:
+      timeout: 90
+    wh_n300_civ2:
+      timeout: 90
+    bh_p100a_civ2_viommu:
+      timeout: 90
+    bh_p150b_civ2:
+      timeout: 240
+  owner_id: U07K00A281X # Kevin Wu
+  team: train
+
+- name: "TinyLlama Shakespeare"
+  cmd: python tt-train/scripts/run_models.py --model_config tt-train/scripts/run_models_configs/single_cards.yaml --filter-filenames "tinyllama_shakespeare"
+  skus:
+    bh_p150b_civ2:
+      timeout: 240
+  owner_id: U07K00A281X # Kevin Wu
+  team: train
+
+- name: "Linear Regression"
+  cmd: python tt-train/scripts/run_models.py --model_config tt-train/scripts/run_models_configs/single_cards.yaml --filter-filenames "linear_regression"
+  skus:
+    wh_n150_civ2:
+      timeout: 90
+    wh_n300_civ2:
+      timeout: 90
+    bh_p100a_civ2_viommu:
+      timeout: 90
+    bh_p150b_civ2:
+      timeout: 240
+  owner_id: U07K00A281X # Kevin Wu
+  team: train
+
+- name: "Qwen 3 1.7B Shakespeare"
+  cmd: python tt-train/scripts/run_models.py --model_config tt-train/scripts/run_models_configs/single_cards.yaml --filter-filenames "qwen3_1.7b_shakespeare"
+  skus:
+    bh_p150b_civ2:
+      timeout: 240
+  owner_id: U07K00A281X # Kevin Wu
+  team: train
+
+- name: "Tiny Deepseek (Char) Shakespeare"
+  cmd: python tt-train/scripts/run_models.py --model_config tt-train/scripts/run_models_configs/single_cards.yaml --filter-filenames "tiny_deepseek_char_shakespeare"
+  skus:
     bh_p150b_civ2:
       timeout: 240
   owner_id: U07K00A281X # Kevin Wu
