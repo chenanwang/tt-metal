@@ -1288,6 +1288,14 @@ TYPED_TEST(DistributedTensorOpIfTest, BroadcastWithShardedTopology) {
 }
 
 TYPED_TEST(DistributedTensorOpIfTest, FusedRmsMinimalWithShardedTopology) {
+    // This test hardcodes an 8-core layout with cluster_axis=1 targeting
+    // a linear 1x8 mesh. Skip meshes where that config is invalid.
+    const auto mesh_shape = this->device_->shape();
+    if (mesh_shape.mesh_size() < 8 || mesh_shape[1] < 8) {
+        GTEST_SKIP() << "fused_rms_minimal test requires at least 1x8 mesh (have "
+                     << mesh_shape[0] << "x" << mesh_shape[1] << ")";
+    }
+
     // fused_rms_minimal requirements (from validate_on_program_cache_miss):
     //   - input shape (1,1,M,N): M<=32, N%32==0, TILE, WIDTH_SHARDED ROW_MAJOR
     //   - block_w * tile_width(32) == shard_spec.shape[1]
@@ -1315,9 +1323,9 @@ TYPED_TEST(DistributedTensorOpIfTest, FusedRmsMinimalWithShardedTopology) {
         tt::tt_metal::TensorLayout(
             tt::tt_metal::DataType::BFLOAT16, tt::tt_metal::PageConfig(tt::tt_metal::Layout::TILE), shard_mem_cfg));
 
-    // Replicated topology: each device runs RMS locally, all_gather collects stats.
-    auto replicated_topology = TensorTopology::create_fully_replicated_tensor_topology(this->device_->shape());
-    ttnn::graph::DistributedTensorSpec dist_input{input_spec, replicated_topology};
+    // Sharded topology to match fused_rms_minimal distributed execution assumptions.
+    auto sharded_topology = TensorTopology::create_sharded_tensor_topology(this->device_->shape(), /*shard_dim=*/0);
+    ttnn::graph::DistributedTensorSpec dist_input{input_spec, sharded_topology};
 
     // Weight: ROW_MAJOR, padded_shape[-1]==32 (tile width), volume==N.
     // Shape (1,1,N/32,32): padded[-1]=32, volume=N
